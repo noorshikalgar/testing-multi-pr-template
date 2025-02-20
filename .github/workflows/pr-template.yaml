@@ -1,16 +1,20 @@
 name: Apply PR Template Based on Folder
 on:
   pull_request:
-    types: [opened, edited]
+    types: [opened, edited]  # Runs when a PR is opened or edited
 
 jobs:
   set-template:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # ✅ Works on free-tier GitHub Actions runner (2-core)
     steps:
-      - name: Apply project-one Template
-        if: contains(github.head_ref, 'ui/web/release/')
+      - name: Checkout repository
+        uses: actions/checkout@v4  # ✅ Ensures repo files are accessible
+
+      - name: Set PR Template for Angular-A1
+        if: contains(github.head_ref, 'ui/web/release')  # ✅ Checks if the PR branch is related to Angular-A1
         run: |
-          echo "Applying project-one PR template"
-          gh pr edit "$PR_URL" --body "$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)"
+          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)
+          gh pr edit "$GITHUB_REF" --body "$PR_BODY"  # ✅ Uses GitHub CLI to update PR description
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # ✅ Uses GitHub-provided authentication token
+
