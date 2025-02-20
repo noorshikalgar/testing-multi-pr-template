@@ -1,0 +1,16 @@
+name: Apply PR Template Based on Folder
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  set-template:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply project-one Template
+        if: contains(github.head_ref, 'ui/web/release/')
+        run: |
+          echo "Applying project-one PR template"
+          gh pr edit "$PR_URL" --body "$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
