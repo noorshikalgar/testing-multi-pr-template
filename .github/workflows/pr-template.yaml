@@ -1,14 +1,25 @@
-name: Apply PR Template Based on Target Branch
+name: PR Template Handler
+
 on:
   pull_request:
-    types: [opened, edited]
+    types: [opened, edited, synchronize]  # Only run on these PR events
 
 jobs:
-  set-template:
+  check-pr:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Check If PR Title or Description Was Edited
+        id: check_changes
+        run: |
+          ACTION=$(jq --raw-output .action "$GITHUB_EVENT_PATH")
+          TITLE_CHANGED=$(jq --raw-output .changes.title // empty "$GITHUB_EVENT_PATH")
+          BODY_CHANGED=$(jq --raw-output .changes.body // empty "$GITHUB_EVENT_PATH")
+
+          if [[ "$ACTION" == "edited" && -z "$TITLE_CHANGED" && -z "$BODY_CHANGED" ]]; then
+            echo "Skipping workflow, no relevant changes."
+            exit 0
+          fi
 
       - name: Get PR Details (Number, Target Branch, Body)
         id: get_pr
@@ -24,20 +35,20 @@ jobs:
 
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
           echo "TARGET_BRANCH=$TARGET_BRANCH" >> $GITHUB_ENV
-          echo "PR_BODY=$PR_BODY" >> $GITHUB_ENV
 
-      - name: Debug PR Body
-        run: echo "Processed PR_BODY='$PR_BODY'"
+          # Save PR_BODY to a file to handle multi-line content safely
+          echo "$PR_BODY" > pr_body.txt
 
       - name: Set PR Template if Target Branch Matches & PR Body is Empty
         if: contains(env.TARGET_BRANCH, 'ui/web/release')
         run: |
-          if [[ -z "$PR_BODY" ]]; then
+          if [[ ! -s pr_body.txt ]]; then  # Check if pr_body.txt is empty
             PR_TEMPLATE=$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)
             gh pr edit $PR_NUMBER --body "$PR_TEMPLATE"
-          else
-            echo "PR Body is not empty, skipping template update."
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Success Message
+        if: always()
+        run: echo "Workflow completed successfully 🎉"
