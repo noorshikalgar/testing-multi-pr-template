@@ -10,18 +10,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get PR Number and Target Branch
+      - name: Get PR Details (Number, Target Branch, Body)
         id: get_pr
         run: |
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           TARGET_BRANCH=$(jq --raw-output .pull_request.base.ref "$GITHUB_EVENT_PATH")
+          PR_BODY=$(jq --raw-output .pull_request.body "$GITHUB_EVENT_PATH")
+
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
           echo "TARGET_BRANCH=$TARGET_BRANCH" >> $GITHUB_ENV
+          echo "PR_BODY=$PR_BODY" >> $GITHUB_ENV
 
-      - name: Set PR Template if Target Branch Matches
-        if: contains(env.TARGET_BRANCH, 'ui/web/release/')  # ✅ Now checking target branch
+      - name: Set PR Template if Target Branch Matches & PR Body is Empty
+        if: contains(env.TARGET_BRANCH, 'ui/web/release/') && env.PR_BODY == ''
         run: |
-          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)
-          gh pr edit $PR_NUMBER --body "$PR_BODY"
+          PR_TEMPLATE=$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)
+          gh pr edit $PR_NUMBER --body "$PR_TEMPLATE"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
