@@ -17,7 +17,7 @@ jobs:
       - name: Set PR Template for Angular-A1
         if: contains(github.head_ref, 'ui/web/release/')  # ✅ Match your branch name
         run: |
-          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE/angular-a1-template.md)
+          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)
           gh pr edit $PR_NUMBER --body "$PR_BODY"  # ✅ Uses correct PR number
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
