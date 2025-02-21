@@ -1,4 +1,4 @@
-name: Apply PR Template Based on Folder
+name: Apply PR Template Based on Target Branch
 on:
   pull_request:
     types: [opened, edited]
@@ -10,14 +10,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get PR Number
+      - name: Get PR Number and Target Branch
         id: get_pr
-        run: echo "PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")" >> $GITHUB_ENV
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          TARGET_BRANCH=$(jq --raw-output .pull_request.base.ref "$GITHUB_EVENT_PATH")
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          echo "TARGET_BRANCH=$TARGET_BRANCH" >> $GITHUB_ENV
 
-      - name: Set PR Template for Angular-A1
-        if: contains(github.head_ref, 'ui/web/release/')  # ✅ Match your branch name
+      - name: Set PR Template if Target Branch Matches
+        if: contains(env.TARGET_BRANCH, 'ui/web/release/')  # ✅ Now checking target branch
         run: |
           PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)
-          gh pr edit $PR_NUMBER --body "$PR_BODY"  # ✅ Uses correct PR number
+          gh pr edit $PR_NUMBER --body "$PR_BODY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
