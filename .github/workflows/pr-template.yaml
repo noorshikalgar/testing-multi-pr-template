@@ -15,7 +15,7 @@ jobs:
         run: |
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           TARGET_BRANCH=$(jq --raw-output .pull_request.base.ref "$GITHUB_EVENT_PATH")
-          PR_BODY=$(jq --raw-output .pull_request.body "$GITHUB_EVENT_PATH")
+          PR_BODY=$(jq --raw-output .pull_request.body "$GITHUB_EVENT_PATH" | tr -d '[:space:]')
 
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
           echo "TARGET_BRANCH=$TARGET_BRANCH" >> $GITHUB_ENV
