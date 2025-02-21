@@ -1,43 +1,47 @@
-name: Apply PR Template Based on Target Branch
+name: PR Template Handler
+
 on:
   pull_request:
-    types: [opened, edited]
+    types: [opened, edited, synchronize]  # Trigger only on these PR events
 
 jobs:
-  set-template:
+  check-pr:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Check If PR Title or Description Was Edited
+        id: check_changes
+        run: |
+          ACTION=$(jq --raw-output .action "$GITHUB_EVENT_PATH")
+          TITLE_CHANGED=$(jq --raw-output '.changes.title | if . == null then "" else "edited" end' "$GITHUB_EVENT_PATH")
+          BODY_CHANGED=$(jq --raw-output '.changes.body | if . == null then "" else "edited" end' "$GITHUB_EVENT_PATH")
+
+          if [[ "$ACTION" == "edited" && -z "$TITLE_CHANGED" && -z "$BODY_CHANGED" ]]; then
+            echo "Skipping workflow, no relevant changes."
+            exit 0
+          fi
 
       - name: Get PR Details (Number, Target Branch, Body)
         id: get_pr
         run: |
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           TARGET_BRANCH=$(jq --raw-output .pull_request.base.ref "$GITHUB_EVENT_PATH")
-          PR_BODY=$(jq --raw-output .pull_request.body "$GITHUB_EVENT_PATH")
-
-          # Convert "null" to an empty string
-          if [[ "$PR_BODY" == "null" ]]; then
-            PR_BODY=""
-          fi
+          PR_BODY=$(jq --raw-output '.pull_request.body // ""' "$GITHUB_EVENT_PATH")
 
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
           echo "TARGET_BRANCH=$TARGET_BRANCH" >> $GITHUB_ENV
-          echo "PR_BODY=$PR_BODY" >> $GITHUB_ENV
-
-      - name: Debug PR Body
-        run: echo "Processed PR_BODY='$PR_BODY'"
+          echo "$PR_BODY" > pr_body.txt  # Store PR body safely
 
       - name: Set PR Template if Target Branch Matches & PR Body is Empty
         if: contains(env.TARGET_BRANCH, 'ui/web/release')
         run: |
-          if [[ -z "$PR_BODY" ]]; then
+          if [[ ! -s pr_body.txt ]]; then  # Check if PR description is empty
             PR_TEMPLATE=$(cat .github/PULL_REQUEST_TEMPLATE/project-one-template.md)
             gh pr edit $PR_NUMBER --body "$PR_TEMPLATE"
-          else
-            echo "PR Body is not empty, skipping template update."
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Success Message
+        if: always()
+        run: echo "Workflow completed successfully 🎉"
